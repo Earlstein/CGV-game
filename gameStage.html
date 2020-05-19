@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Luck</title>
+    <script src = "js/three.min.js"></script>
+    <script src = "physi.js"></script>
+    <script src = "OrbitControls.js"></script>
+    <script src = "tween.js"></script>
+    <script>
+
+        var scene, camera, renderer, mesh, ball;
+        var meshFloor, ambientLight, light, control;
+
+        var render_stats, physics_stats, car = {};
+
+        var keyboard = {};
+        var player = { height:1.8, speed:0.2, turnSpeed:Math.PI*0.02 };
+        var USE_WIREFRAME = false;
+
+        Physijs.scripts.worker = 'physijs_worker.js';
+        Physijs.scripts.ammo = 'examples/js/ammo.js';
+
+        function init(){
+            TWEEN.start();
+            // scene = new THREE.Scene();
+            // scene.background = new THREE.Color('skyblue')
+
+            scene = new Physijs.Scene;
+            scene.setGravity(new THREE.Vector3( 0, -30, 0 ));
+
+
+            var fov = 45;
+            var aspect = window.innerHeight / window.innerHeight;
+            var n = 0.1, f = 20000;
+            camera = new THREE.PerspectiveCamera( fov, aspect, n, f);
+            camera.position.set( 0, 100, 50 );
+            // camera.position.set(0, player.height, -5);
+            camera.lookAt(scene.position);
+            // camera.lookAt(new THREE.Vector3(0,player.height,-20));
+            scene.add(camera);
+
+            light = new THREE.DirectionalLight( 0xFFFFFF );
+            light.position.set( 20, 40, -15 );
+            light.target.position.copy( scene.position );
+            light.castShadow = true;
+            light.shadowCameraLeft = -60;
+            light.shadowCameraTop = -60;
+            light.shadowCameraRight = 60;
+            light.shadowCameraBottom = 60;
+            light.shadowCameraNear = 20;
+            light.shadowCameraFar = 200;
+            light.shadowBias = -.0001
+            light.shadowMapWidth = light.shadowMapHeight = 2048;
+            light.shadowDarkness = .7;
+            scene.add( light );
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.BasicShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            //adding the ground floor
+
+            var textureloder = new THREE.TextureLoader();
+            let groundMaterial = Physijs.createMaterial(
+                new THREE.MeshLambertMaterial({ color: 0xffffBf, side : THREE.DoubleSide
+                    // map: textureloder.load( 'grass.png' )
+                    }),
+                .8, // high friction
+                .4 // low restitution
+            );
+            // groundMaterial.map.wrapS = groundMaterial.map.wrapT = THREE.RepeatWrapping;
+            // groundMaterial.map.repeat.set( 2.5, 2.5 );
+
+            // Ground
+            let ground = new Physijs.BoxMesh(
+                new THREE.BoxGeometry(200, 1, 200),
+                groundMaterial,
+                0 // mass
+            );
+            ground.receiveShadow = true;
+            scene.add( ground );
+
+            // Boundary walls around maze
+            var outerWalls, innerWalls, geometry = new THREE.BoxGeometry(1, 20, 200);
+            let wallMaterial = Physijs.createMaterial(
+                new THREE.MeshLambertMaterial({ map: textureloder.load( 'rocks.jpg' ) }),
+            );
+            outerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            outerWalls.position.y = 1;
+            outerWalls.position.x = -99;
+            scene.add( outerWalls );
+
+            outerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            outerWalls.position.y = 1;
+            outerWalls.position.x = 99;
+            scene.add( outerWalls );
+
+            outerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            outerWalls.position.y = 1;
+            outerWalls.position.z = -99;
+            outerWalls.rotation.y = -Math.PI / 2;
+            scene.add( outerWalls );
+
+            outerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            outerWalls.position.y = 1;
+            outerWalls.position.z = 99;
+            outerWalls.rotation.y = Math.PI / -2;
+            scene.add(outerWalls);
+
+            //
+            geometry = new THREE.BoxGeometry(1, 20, 40);
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(0,1,79);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(50,1,79);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(50,1,-79);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-50,1,79);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(60,1,-5);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-80,1,79);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(80,1,66);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-50,1,-79);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(30,1,-35);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(0,1,40);
+            innerWalls.rotation.y = Math.PI/2
+            scene.add( innerWalls );
+
+            geometry = new THREE.BoxGeometry(1, 20, 60);
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(0,1,10);
+            innerWalls.rotation.y = Math.PI/2
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(0,1,-20);
+            innerWalls.rotation.y = Math.PI/2
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(0,1,-50);
+            innerWalls.rotation.y = Math.PI/2
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-70,1,-35);
+            innerWalls.rotation.y = Math.PI/2
+            scene.add( innerWalls );
+
+            geometry = new THREE.BoxGeometry(1, 20, 40);
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-70,0,-5);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-70,0,-60);
+            innerWalls.rotation.y = Math.PI/2;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(70,0,-70);
+            innerWalls.rotation.y = Math.PI/2;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(20,0,-80);
+            innerWalls.rotation.y = Math.PI/2;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(10,0,80);
+            innerWalls.rotation.y = Math.PI/2;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-40,0,60);
+            innerWalls.rotation.y = Math.PI/2;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-20,0,10);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-65,0,-15);
+            innerWalls.rotation.y = Math.PI/2;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(65,0,-5);
+            innerWalls.rotation.y = Math.PI/2;
+            scene.add( innerWalls );
+
+            geometry = new THREE.BoxGeometry(1, 20, 20);
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(0,0,-70);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-30,0,-70);
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-80,0,80);
+            innerWalls.rotation.y = Math.PI/2,
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(70,0,50);
+            innerWalls.rotation.y = Math.PI/2,
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-60,0,15);
+            innerWalls.rotation.y = Math.PI/2,
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-70,0,40);
+            innerWalls.rotation.y = Math.PI/2,
+            scene.add( innerWalls );
+
+            ball = new Physijs.SphereMesh(
+                new THREE.SphereGeometry( 2, 32, 32 ),
+                new THREE.MeshLambertMaterial({color: 0xFFC0CB,opacity: 0 }),
+                { restitution: 10 }
+            )
+            ball.position.set(0,2.5,0);
+            scene.add( ball );
+            new TWEEN.Tween(ball.material).to({opacity: 1}, 500).start();
+
+            //controls both with mouse and W,A,S and D buttons
+            control = new THREE.OrbitControls(camera, renderer.domElement);
+            var xSpeed = 1;
+            var ySpeed = 1;
+            document.addEventListener("keydown", onDocumentKeyDown, false);
+            function onDocumentKeyDown(event) {
+                var keyCode = event.which;
+                if (keyCode == 87) {
+                    ball.position.z -= ySpeed;
+                } else if (keyCode == 83) {
+                    ball.position.z += ySpeed;
+                } else if (keyCode == 65) {
+                    ball.position.x -= xSpeed;
+                } else if (keyCode == 68) {
+                    ball.position.x += xSpeed;
+                } else if (keyCode == 32) {
+                    ball.position.set(0, 0, 0);
+                }
+            };
+
+
+            //Skybox
+            let materialArray = [];
+            materialArray.push(new THREE.MeshBasicMaterial( { map: textureloder.load( 'world/arid2_ft.jpg')}));
+            materialArray.push(new THREE.MeshBasicMaterial( { map: textureloder.load( 'world/arid2_bk.jpg')}));
+            materialArray.push(new THREE.MeshBasicMaterial( { map: textureloder.load( 'world/arid2_up.jpg')}));
+            materialArray.push(new THREE.MeshBasicMaterial( { map: textureloder.load( 'world/arid2_dn.jpg')}));
+            materialArray.push(new THREE.MeshBasicMaterial( { map: textureloder.load( 'world/arid2_rt.jpg')}));
+            materialArray.push(new THREE.MeshBasicMaterial( { map: textureloder.load( 'world/arid2_lf.jpg')}));
+
+            for (let i = 0; i < 6; i++)
+                materialArray[i].side = THREE.BackSide;
+
+            var skyGeometry = new THREE.CubeGeometry( 200, 200, 200 );
+            let skybox = new THREE.Mesh( skyGeometry, materialArray );
+            scene.add( skybox );
+            // scene.simulate();
+            animate();
+        }
+        function InnerWalls(){
+            let wall_material = Physijs.createMaterial(
+                new THREE.MeshLambertMaterial({ color: 0xff6666 }),
+                .8, // high friction
+                .2 // low restitution
+            );
+            let wallHeight = 10;
+            let wall = new Physijs.BoxMesh(
+                new THREE.BoxGeometry(wallHeight-wallHeight/2, 10, 30),
+                wall_material,
+                0 // mass
+            );
+            wall.position.set(70, wallHeight, -85).clone();
+            meshFloor.add(wall);
+
+            wall.position.set(70, wallHeight, -15);
+            meshFloor.add(wall.clone());
+
+            wall.position.set(70, wallHeight, 50);
+            meshFloor.add(wall.clone());
+
+            wall = new Physijs.BoxMesh(
+                new THREE.BoxGeometry(wallHeight-wallHeight/2, 10, 15),
+                wall_material,
+                0 // mass
+            );
+
+            wall.position.set(70, wallHeight, 90);
+            meshFloor.add(wall.clone());
+
+            wall = new Physijs.BoxMesh(
+                new THREE.BoxGeometry(wallHeight-wallHeight/2, 50, 15),
+                wall_material,
+                0 // mass
+            );
+            wall.position.set(90, wallHeight, 70);
+        }
+        function OuterWall() {
+            let wallHeight = 10;
+            let wall_material = Physijs.createMaterial(
+                new THREE.MeshLambertMaterial({ color: 0xff6666 }),
+                .8, // high friction
+                .2 // low restitution
+            );
+            let wall = new Physijs.BoxMesh(
+                new THREE.BoxGeometry(wallHeight-wallHeight/2, wallHeight, 200),
+                wall_material,
+                0 // mass
+            );
+            wall.position.set(98, wallHeight, 0);
+            meshFloor.add(wall.clone());
+
+            wall.position.set(-98, wallHeight, 0);
+            meshFloor.add(wall.clone());
+
+            wall.position.set(0, wallHeight, 98);
+            wall.rotation.y = Math.PI / 2;
+            meshFloor.add(wall.clone());
+
+            wall.position.set(0, wallHeight, -98);
+            wall.rotation.y = Math.PI / 2;
+            meshFloor.add(wall.clone());
+
+            scene.add(meshFloor);
+        }
+
+        function animate(){
+            scene.simulate();
+
+            requestAnimationFrame(animate);
+
+            // if(keyboard[87]){ // W key
+            //     camera.position.x -= Math.sin(camera.rotation.y) * player.speed;
+            //     camera.position.z -= -Math.cos(camera.rotation.y) * player.speed;
+            // }
+            // if(keyboard[83]){ // S key
+            //     camera.position.x += Math.sin(camera.rotation.y) * player.speed;
+            //     camera.position.z += -Math.cos(camera.rotation.y) * player.speed;
+            // }
+            // if(keyboard[65]){ // A key
+            //     camera.position.x += Math.sin(camera.rotation.y + Math.PI/2) * player.speed;
+            //     camera.position.z += -Math.cos(camera.rotation.y + Math.PI/2) * player.speed;
+            // }
+            // if(keyboard[68]){ // D key
+            //     camera.position.x += Math.sin(camera.rotation.y - Math.PI/2) * player.speed;
+            //     camera.position.z += -Math.cos(camera.rotation.y - Math.PI/2) * player.speed;
+            // }
+            //
+            // if(keyboard[37]){ // left arrow key
+            //     camera.rotation.y -= player.turnSpeed;
+            // }
+            // if(keyboard[39]){ // right arrow key
+            //     camera.rotation.y += player.turnSpeed;
+            // }
+            //
+            //
+            // //player camera view
+            // var time = Date.now() * 5;
+            // ball.position.set(
+            //     camera.position.x - Math.sin(camera.rotation.y + Math.PI/6) * 0.75,
+            //     camera.position.y - 0.5 + Math.sin(time*4 + camera.position.x + camera.position.z)*0.01,
+            //     camera.position.z + Math.cos(camera.rotation.y + Math.PI/6) * 0.75-3
+            // );
+            // ball.rotation.set(
+            //     camera.rotation.x,
+            //     camera.rotation.y,
+            //     camera.rotation.z
+            // );
+
+            renderer.render(scene, camera);
+        }
+
+        function keyDown(event){
+            keyboard[event.keyCode] = true;
+        }
+
+        function keyUp(event){
+            keyboard[event.keyCode] = false;
+        }
+
+        window.addEventListener('keydown', keyDown);
+        window.addEventListener('keyup', keyUp);
+
+        window.onload = init;
+
+
+    </script>
+</head>
+<body>
+
+</body>
+</html>
