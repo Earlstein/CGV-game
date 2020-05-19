@@ -1,7 +1,7 @@
 
 var scene, camera, bricks, grass,renderer, mesh, meshfloor, board1, board2, board3, board4 ;
 var keyboard = {} ;
-var player = {height : 1.8, speed: 0.2} ;
+var player = {height : 0.1, speed: 0.2} ;
 var USE_WIREFRAME = false ;
 //var meshes = []; 
 
@@ -17,7 +17,7 @@ function init(){
 	mesh = new THREE.Mesh(
 		new THREE.BoxGeometry(1,1,1),
 		new THREE.MeshPhongMaterial({color : 0xff4444, wireframe: USE_WIREFRAME })
-		) ;
+		);
 
 	mesh.castShadow = true ;
 	mesh.receiveShadow = true ;
@@ -58,7 +58,7 @@ function init(){
 		board1.position.y += 1 ;
 		board1.position.z += 10 ;
 		board1.rotation.x += Math.PI ;
-		scene.add(board1) ;
+		// scene.add(board1) ;
 
 		/*LEFT BOARD*/
 		board2 = new THREE.Mesh(
