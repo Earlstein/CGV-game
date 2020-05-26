@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Luck</title>
+    <script src = "js/three.min.js"></script>
+    <script src = "js/physi.js"></script>
+    <script src = "js/OrbitControls.js"></script>
+    <script src = "js/tween.js"></script>
+    <script>
+
+        var scene, camera, renderer, mesh, ball;
+
+        var meshFloor, ambientLight, light, control;
+
+        var render_stats, physics_stats, car = {};
+
+        var change_cam = false; // Used to trigger if camera perspective has changed
+
+        var keyboard = {};
+        var player = { height:1.8, speed:0.2, turnSpeed:Math.PI*0.02 };
+
+        Physijs.scripts.worker = 'physijs_worker.js';
+        Physijs.scripts.ammo = 'examples/js/ammo.js';
+
+        //------------------------------------USED TO DIVIDE FUNCTIONS------------------------------------------------------------------
+
+        function world(){
+        	TWEEN.start();
+
+        	//Making a scene
+        	scene = new Physijs.Scene;
+            scene.setGravity(new THREE.Vector3( 0, -30, 0 ));
+
+            //-----------------------------------------------------------------
+
+            //Camera
+            var fov = 60;
+            var aspect = window.innerHeight / window.innerHeight;
+            var near = 1, far = 800;
+            camera = new THREE.PerspectiveCamera( fov, aspect, near, far);
+            camera.position.set( 0, 100, 50 );
+            camera.lookAt(scene.position);
+            //camera.focus(.5) ;
+            scene.add(camera);
+
+
+            //----------------------------------------------------------------
+
+            //Lights
+            light = new THREE.DirectionalLight( 0xFFFFFF );
+            light.position.set( 20, 40, -15 );
+            light.target.position.copy( scene.position );
+            light.castShadow = true;
+            light.shadowCameraLeft = -60;
+            light.shadowCameraTop = -60;
+            light.shadowCameraRight = 60;
+            light.shadowCameraBottom = 60;
+            light.shadowCameraNear = 20;
+            light.shadowCameraFar = 200;
+            light.shadowBias = -.0001
+            light.shadowMapWidth = light.shadowMapHeight = 2048;
+            light.shadowDarkness = .7;
+            scene.add( light );
+
+            //--------------------------------------------------------------------------
+
+
+            let groundMaterial = Physijs.createMaterial(
+                new THREE.MeshLambertMaterial({ color: 0xffffBf, side : THREE.DoubleSide,
+                    // map: textureloder.load( 'grass.png' )
+                    shading: THREE.FlatShading
+                    }),
+                .4, // high friction
+                .4, // low restitution
+            );
+
+            // Ground
+            let ground = new Physijs.BoxMesh(
+                new THREE.BoxGeometry(200, 1, 200),
+                groundMaterial,
+                0 // mass
+            );
+            ground.receiveShadow = true;
+            scene.add( ground );
+
+            //----------------------------------------------------------------
+
+            /*
+			 * Boundary walls around maze
+			 Collision detection : needed	
+            */
+
+            var outerWalls, innerWalls, geometry = new THREE.BoxGeometry(1, 20, 200);
+            let wallMaterial = Physijs.createMaterial(
+                new THREE.MeshLambertMaterial({ map: addTexture( 'rocks.jpg' ) , shading: THREE.FlatShading }),
+            );
+            outerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            outerWalls.position.y = 1;
+            outerWalls.position.x = -99;
+            //outerWalls.castShadow = true ;
+            //outerWalls.receiveShadow = true ;
+            scene.add( outerWalls );
+
+            outerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            outerWalls.position.y = 1;
+            outerWalls.position.x = 99;
+            //outerWalls.castShadow = true ;
+            //outerWalls.receiveShadow = true ;
+            scene.add( outerWalls );
+
+            outerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            outerWalls.position.y = 1;
+            outerWalls.position.z = -99;
+            outerWalls.rotation.y = -Math.PI / 2;
+            //outerWalls.castShadow = true ;
+            //outerWalls.receiveShadow = true ;
+            scene.add( outerWalls );
+
+            outerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            outerWalls.position.y = 1;
+            outerWalls.position.z = 99;
+            outerWalls.rotation.y = Math.PI / -2;
+            //outerWalls.castShadow = true ;
+            //outerWalls.receiveShadow = true ;
+            scene.add(outerWalls);
+
+            //
+            geometry = new THREE.BoxGeometry(1, 20, 40);
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(0,1,79);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(50,1,79);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(50,1,-79);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-50,1,79);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(60,1,-5);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-80,1,79);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(80,1,66);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-50,1,-79);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(30,1,-35);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(0,1,40);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            innerWalls.rotation.y = Math.PI/2
+            scene.add( innerWalls );
+
+            geometry = new THREE.BoxGeometry(1, 20, 60);
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(0,1,10);
+            innerWalls.rotation.y = Math.PI/2 ;
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(0,1,-20);
+            innerWalls.rotation.y = Math.PI/2 ;
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(0,1,-50);
+            innerWalls.rotation.y = Math.PI/2 ;
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-70,1,-35);
+            innerWalls.rotation.y = Math.PI/2; 
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            geometry = new THREE.BoxGeometry(1, 20, 40);
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-70,0,-5);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-70,0,-60);
+            innerWalls.rotation.y = Math.PI/2;
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(70,0,-70);
+            innerWalls.rotation.y = Math.PI/2;
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(20,0,-80);
+            innerWalls.rotation.y = Math.PI/2;
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(10,0,80);
+            innerWalls.rotation.y = Math.PI/2;
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-40,0,60);
+            innerWalls.rotation.y = Math.PI/2;
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-20,0,10);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-65,0,-15);
+            innerWalls.rotation.y = Math.PI/2;
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(65,0,-5);
+            innerWalls.rotation.y = Math.PI/2;
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            geometry = new THREE.BoxGeometry(1, 20, 20);
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(0,0,-70);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-30,0,-70);
+            //innerWalls.castShadow = true ;
+            //innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-80,0,80);
+            innerWalls.rotation.y = Math.PI/2 ;
+            innerWalls.castShadow = true ;
+            innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(70,0,50);
+            innerWalls.rotation.y = Math.PI/2 ;
+            innerWalls.castShadow = true ;
+            innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-60,0,15);
+            innerWalls.rotation.y = Math.PI/2 ;
+            innerWalls.castShadow = true ;
+            innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+            innerWalls = new Physijs.BoxMesh( geometry, wallMaterial, 0, { restitution: .2 } );
+            innerWalls.position.set(-70,0,40);
+            innerWalls.rotation.y = Math.PI/2 ;
+            innerWalls.castShadow = true ;
+            innerWalls.receiveShadow =true ;
+            scene.add( innerWalls );
+
+
+            //---------------------------------------------------
+
+             //Skybox
+            let materialArray = [];
+            materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/world/bluecloud_ft.jpg' ), shading: THREE.FlatShading} ));
+            materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/world/bluecloud_bk.jpg' ), shading: THREE.FlatShading}));
+            materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/world/bluecloud_up.jpg' ), shading: THREE.FlatShading}));
+            materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/world/bluecloud_dn.jpg' ), shading: THREE.FlatShading}));
+            materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/world/bluecloud_rt.jpg' ), shading: THREE.FlatShading}));
+            materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/world/bluecloud_lf.jpg' ), shading: THREE.FlatShading}));
+
+            for (let i = 0; i < 6; i++)
+                materialArray[i].side = THREE.BackSide;
+
+            var skyGeometry = new THREE.CubeGeometry( 500, 500, 500);
+            let skybox = new THREE.Mesh( skyGeometry, materialArray );
+            scene.add( skybox );
+
+
+            //------------------------------------------------------------
+
+            // Temporary Player
+            ball = new Physijs.SphereMesh(
+                new THREE.SphereGeometry( 2, 32, 32 ),
+                new THREE.MeshLambertMaterial({color: 0xFFC0CB, opacity: 0, shading: THREE.FlatShading}),
+                { restitution: 10 }
+            ) ;
+            ball.position.set(0,2.5,0);
+            scene.add( ball );
+            new TWEEN.Tween(ball.material).to({opacity: 1}, 500).start();
+        }
+
+        //---------------------------------------------------------------------------------------------------------------------------
+
+        function addTexture(imageURL, material){
+        	//This function we gon' use for adding texture to any object 
+        	function callback(){
+        		if (material){
+        			material.map = texture;
+        			material.needsUpdate = false ;
+        		}
+        	}
+        	var texture = new THREE.ImageUtils.loadTexture(imageURL, undefined, callback);
+
+        	return texture ;
+        }
+
+        //-----------------------------------------------------------------------------------------------------------------------------
+
+        function player_movement(){
+        	
+        	/* Controls
+        	* A,S,W,D,C and Space Bar : Player
+        	* Mouse : Camera
+			*/
+
+			//Mouse to rotate around and to zoom in and out
+        	control = new THREE.OrbitControls(camera, renderer.domElement);
+            //var dir = new THREE.Vector3(ball.position.x, ball.position.y, ball.position.z);
+            //dir.sub(camera.position).normalize(); // direction vector between the camera and the ball
+            
+            var xSpeed = 1;
+            var ySpeed = 1;
+            
+            document.addEventListener("keydown", onDocumentKeyDown, false);
+            function onDocumentKeyDown(event) {
+                var keyCode = event.which;
+                if (change_cam){
+                	//Camera uses the position of the ball
+                  	camera.position.set(
+                  		ball.position.x + 2,
+                  		ball.position.y + 2,
+                		ball.position.z + 2
+                  			) ; 
+
+                }
+
+                if (keyCode == 87) { //W 
+                    ball.position.z -= ySpeed;
+                } else if (keyCode == 83) { //S
+                    ball.position.z += ySpeed;
+                } else if (keyCode == 65) { //A
+                    ball.position.x -= xSpeed;
+                } else if (keyCode == 68) { //D
+                    ball.position.x += xSpeed;
+                } else if (keyCode == 32) { //Space Bar
+                    ball.position.set(0, 0, 0);
+                }else if (keyCode == 67){ //C
+                	if (change_cam == true){
+                		change_cam = false
+                		player_movement();
+                		reset_cam_pos() ;
+                	}
+                	else{
+                		change_cam = true;
+                	}
+                }
+            }
+        }
+
+        //---------------------------------------------------------------------------------------------------------------------------
+
+        function reset_cam_pos(){
+        	// Resets the position camera farther
+        	camera.position.set( 0, 100, 50 );
+        }
+
+        //--------------------------------------------------------------------------------------------------------------------------
+
+        function init(){
+            
+            renderer = new THREE.WebGLRenderer({
+                antialias:true,
+                alpha: false
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.BasicShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            world() ;
+            player_movement() ;
+            animate();
+
+        }
+
+
+        //------------------------------------------------------------------------------------------------------------------------------
+        
+
+        function animate(){
+            // For all the rotating or moving objects 
+            scene.simulate();
+            requestAnimationFrame(animate);
+           	renderer.render(scene, camera);
+        }
+
+        //-------------------------------------------------------------------------------------------------------------------------------
+
+        function keyDown(event){
+            keyboard[event.keyCode] = true;
+        }
+
+        function keyUp(event){
+            keyboard[event.keyCode] = false;
+        }
+
+        window.addEventListener('keydown', keyDown);
+        window.addEventListener('keyup', keyUp);
+
+        window.onload = init;
+
+
+    </script>
+</head>
+<body>
+
+</body>
+</html>

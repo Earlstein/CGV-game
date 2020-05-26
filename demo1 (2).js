@@ -1,19 +1,12 @@
-
-var scene, camera, renderer, mesh, clock;
-
-
+var scene, camera, camera2,  renderer, renderer2, mesh, clock;
 var meshFloor, ambientLight, light;
-
 
 var crate, crateTexture, crateNormalMap, crateBumpMap;
 
 var keyboard = {};
-
 var player = { height:1.8, speed:0.2, turnSpeed:Math.PI*0.02, canShoot:0 };
-
 var USE_WIREFRAME = false;
 
-///The Loading Screen
 var loadingScreen = {
 	scene: new THREE.Scene(),
 	camera: new THREE.PerspectiveCamera(90, 1280/720, 0.1, 100),
@@ -22,15 +15,12 @@ var loadingScreen = {
 		new THREE.MeshBasicMaterial({ color:0x4444ff })
 	)
 };
-
-
 var loadingManager = null;
-
-
 var RESOURCES_LOADED = false;
 
 // Models index
 var models = {
+	
 	uzi: {
 		obj:"models/uziGold.obj",
 		mtl:"models/uziGold.mtl",
@@ -39,53 +29,25 @@ var models = {
 	}
 };
 
-
 // Meshes index
 var meshes = {};
-
 
 // Bullets array
 var bullets = [];
 
+function init(){
+	scene = new Physijs.Scene;
+	scene.setGravity(new THREE.Vector3( 0, -30, 0 ));
 
-/*
-*
-*
-*
-*
-*
-*/
-function addTexture(imageURL, material){
-	//This function we gon' use for adding texture to any object 
-	function callback(){
-		if (material){
-			material.map = texture;
-			material.needsUpdate = false ;
-		}
-	}
-	var texture = new THREE.ImageUtils.loadTexture(imageURL, undefined, callback);
-
-	return texture ;
-}
-/*
-*
-*
-*
-*
-*
-*/
-
-function makeWorld(){
-	//Making a scene
-	scene = new THREE.Scene();
-	
-	//Camera
+	// camera one
 	camera = new THREE.PerspectiveCamera(90, 1280/720, 0.1, 1000);
-	camera.position.set(0, player.height, -5);
-	camera.lookAt(new THREE.Vector3(0,player.height,0));
-	
+
+	//camera two
+	camera2 = new THREE.PerspectiveCamera(90,1280/720, 0.1, 1000);
+
+
+
 	clock = new THREE.Clock();
-	
 	
 	loadingScreen.box.position.set(0,0,5);
 	loadingScreen.camera.lookAt(loadingScreen.box.position);
@@ -101,18 +63,25 @@ function makeWorld(){
 		onResourcesLoaded();
 	};
 	
-	meshFloor = new THREE.Mesh(
+
+	mesh = new Physijs.Mesh(
+		new THREE.BoxGeometry(1,1,1),
+		new THREE.MeshPhongMaterial({color:0xff4444, wireframe:USE_WIREFRAME})
+	);
+	mesh.position.y += 1;
+	mesh.receiveShadow = true;
+	mesh.castShadow = true;
+	scene.add(mesh);
+	
+	meshFloor = new Physijs.Mesh(
 		new THREE.PlaneGeometry(100,100, 10,10),
 		new THREE.MeshPhongMaterial({color:0xffffff, wireframe:USE_WIREFRAME})
 	);
 	meshFloor.rotation.x -= Math.PI / 2;
 	meshFloor.receiveShadow = true;
-	console.log ("Mesh Floor Position " + meshFloor.position.x + " " + meshFloor.position.y + " " + meshFloor.position.z) ;
 	scene.add(meshFloor);
 	
 	
-
-	// ---------------------Lights-------------------------------------- 
 	ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
 	scene.add(ambientLight);
 	
@@ -125,12 +94,11 @@ function makeWorld(){
 	
 	
 	var textureLoader = new THREE.TextureLoader(loadingManager);
-
-	crateTexture = addTexture("textures/crate0/crate0_diffuse.jpg") 
-	crateBumpMap = addTexture("textures/crate0/crate0_bump.jpg") 
-	crateNormalMap = addTexture("textures/crate0/crate0_normal.jpg") 
+	crateTexture = textureLoader.load("textures/crate0/crate0_diffuse.jpg");
+	crateBumpMap = textureLoader.load("textures/crate0/crate0_bump.jpg");
+	crateNormalMap = textureLoader.load("textures/crate0/crate0_normal.jpg");
 	
-	crate = new THREE.Mesh(
+	crate = new Physijs.Mesh(
 		new THREE.BoxGeometry(3,3,3),
 		new THREE.MeshPhongMaterial({
 			color:0xffffff,
@@ -144,67 +112,67 @@ function makeWorld(){
 	crate.receiveShadow = true;
 	crate.castShadow = true;
 
+
+
 	//Outer walls:
-	var wall = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:textureLoader.load("textures/crate0/bricksx64.png")}));
+	var wall = new Physijs.Mesh(new THREE.BoxGeometry(100, 20, 20),new THREE.MeshBasicMaterial({map:textureLoader.load("textures/crate0/bricksx64.png")}));
+	wall.position.y = 8;
+	wall.position.x=60;
+	wall.rotation.y = Math.PI / 2;
+	scene.add(wall);
+
+
+	var wall = new Physijs.Mesh(new THREE.BoxGeometry(100, 20, 20),new THREE.MeshBasicMaterial({map:textureLoader.load("textures/crate0/bricksx64.png")}));
+	wall.position.y = 8;
+	wall.position.x = -60;
+	wall.rotation.y = Math.PI / 2;
+	scene.add(wall);
+
+
+	var wall = new Physijs.Mesh(new THREE.BoxGeometry(100, 20, 20),new THREE.MeshBasicMaterial({map:textureLoader.load("textures/crate0/bricksx64.png")}));
+	wall.position.y = 8;
+	wall.position.z=60;
+	scene.add(wall);
+
+
+	var wall = new Physijs.Mesh(new THREE.BoxGeometry(100, 20, 20),new THREE.MeshBasicMaterial({map:textureLoader.load("textures/crate0/bricksx64.png")}));
+	wall.position.y = 8;
+	wall.position.z = -60;
+	scene.add(wall);
+
+
+	var wall = new Physijs.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:textureLoader.load("textures/crate0/bricksx64.png")}));
 	wall.position.y = 3;
 	wall.position.x=-10;
 	scene.add(wall);
 
-	var wall0 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/crate0/bricksx64.png")}));
+	var wall0 = new Physijs.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:textureLoader.load("textures/crate0/bricksx64.png")}));
 	wall0.position.x = 10;
 	scene.add(wall0);
 
-	var wall1 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/crate0/bricksx64.png")}));
+	var wall1 = new Physijs.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:textureLoader.load("textures/crate0/bricksx64.png")}));
 	wall1.rotation.y = Math.PI/2;
 	wall1.position.x = 10;
 	scene.add(wall1);
 
 
-	var wall2 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/crate0/bricksx64.png")}));
+	var wall2 = new Physijs.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:textureLoader.load("textures/crate0/bricksx64.png")}));
 	wall2.rotation.y = Math.PI/2;
 	wall2.position.x = -20;
 	scene.add(wall2);
 
 
-	var wall3 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/crate0/bricksx64.png")}));
+	var wall3 = new Physijs.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:textureLoader.load("textures/crate0/bricksx64.png")}));
 	wall3.rotation.y = Math.PI/2;
 	wall3.position.z = -10;
 	scene.add(wall3);
 
-	var wall4 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/crate0/bricksx64.png")}));
+	var wall4 = new Physijs.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:textureLoader.load("textures/crate0/bricksx64.png")}));
 	wall4.rotation.y = Math.PI/2;
 	wall4.position.z = 10;
 	wall4.position.x = -7;
 	scene.add(wall4);
 
-	//----------------------------------------------------------------------------------------------------------
-
-	let materialArray = [];
-            materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_ft.png' ), shading: THREE.FlatShading} ));
-            materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_bk.png' ), shading: THREE.FlatShading}));
-            materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_up.png' ), shading: THREE.FlatShading}));
-            materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_dn.png' ), shading: THREE.FlatShading}));
-            materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_rt.png' ), shading: THREE.FlatShading}));
-            materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_lf.png' ), shading: THREE.FlatShading}));
-
-            for (let i = 0; i < 6; i++)
-                materialArray[i].side = THREE.BackSide;
-
-            var skyGeometry = new THREE.CubeGeometry( 600, 600, 600);
-            let skybox = new THREE.Mesh( skyGeometry, materialArray );
-            skybox.rotation.x = -Math.PI / 2 ;
-            scene.add( skybox );
-}
-
-/*
-*
-*
-*
-*
-*
-*/
-
-function loadingModels(){
 
 	// Load models
 	// REMEMBER: Loading in Javascript is asynchronous, so you need
@@ -212,7 +180,6 @@ function loadingModels(){
 	// don't, then the index '_key' can change while the model is being
 	// downloaded, and so the wrong model will be matched with the wrong
 	// index key.
-
 	for( var _key in models ){
 		(function(key){
 			
@@ -245,15 +212,36 @@ function loadingModels(){
 			
 		})(_key);
 	}
-}
 
-/*
-*
-*
-*
-*
-*
-*/
+	
+	camera.position.set(0, player.height, -5);
+	camera.lookAt(new THREE.Vector3(0,player.height,0));
+	
+	renderer = new THREE.WebGLRenderer();
+	renderer.setSize(1280, 720);
+
+	renderer.shadowMap.enabled = true;
+	renderer.shadowMap.type = THREE.BasicShadowMap;
+
+//camera2
+	camera2.position.set(0,50,0);
+	camera2.lookAt(new THREE.Vector3(0,player.height,0));
+
+	//renderer for camera 2
+	//initialising top perspective scene and adjusting it's size and position
+	renderer2 = new THREE.WebGLRenderer({antialias: true});
+	renderer2.setSize(425, 240);
+	renderer2.domElement.style.left = "0px";
+	renderer2.domElement.style.top = "0px";
+	renderer2.domElement.style.position = 'absolute';
+
+
+	document.body.appendChild(renderer.domElement);
+	document.body.appendChild(renderer2.domElement);
+
+
+	animate();
+}
 
 // Runs when all resources are loaded
 function onResourcesLoaded(){
@@ -264,14 +252,6 @@ function onResourcesLoaded(){
 	meshes["playerweapon"].scale.set(10,10,10);
 	scene.add(meshes["playerweapon"]);
 }
-
-/*
-*
-*
-*
-*
-*
-*/
 
 function animate(){
 
@@ -284,17 +264,20 @@ function animate(){
 		loadingScreen.box.position.y = Math.sin(loadingScreen.box.position.x);
 		
 		renderer.render(loadingScreen.scene, loadingScreen.camera);
+		renderer2.render(loadingScreen.scene, loadingScreen.camera);
 		return;
-
-		}
+	}
 
 	requestAnimationFrame(animate);
 	
 	var time = Date.now() * 0.0005;
 	var delta = clock.getDelta();
 	
-
+	mesh.rotation.x += 0.01;
+	mesh.rotation.y += 0.02;
 	crate.rotation.y += 0.01;
+	// Uncomment for absurdity!
+	// meshes["pirateship"].rotation.z += 0.01;
 	
 	// go through bullets array and update position
 	// remove bullets when appropriate
@@ -339,6 +322,8 @@ function animate(){
 			new THREE.SphereGeometry(0.05,8,8),
 			new THREE.MeshBasicMaterial({color:0xffffff})
 		);
+		// this is silly.
+		// var bullet = models.pirateship.mesh.clone();
 		
 		// position the bullet to come from the player's weapon
 		bullet.position.set(
@@ -383,36 +368,7 @@ function animate(){
 	);
 	
 	renderer.render(scene, camera);
-}
-
-/*
-*
-*
-*
-*
-*
-*/
-
-function init(){
-	
-	try{
-
-	renderer = new THREE.WebGLRenderer();
-	renderer.setSize(1280, 720);
-
-	renderer.shadowMap.enabled = true;
-	renderer.shadowMap.type = THREE.BasicShadowMap;
-	
-	document.body.appendChild(renderer.domElement);
-
-	}
-	catch(e){
-		console.log("Error : " + e);
-	}
-	
-	makeWorld() ;
-	loadingModels() ;
-	animate();
+	renderer2.render(scene, camera2);
 }
 
 function keyDown(event){

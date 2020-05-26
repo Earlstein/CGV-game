@@ -1,0 +1,35 @@
+var progress = document.createElement('div');
+var progressBar = document.createElement('div');
+
+progress.appendChild(progressBar);
+
+document.body.appendChild(progress);
+
+var manager = new THREE.LoadingManager();
+manager.onProgress = function ( item, loaded, total ) {
+  progressBar.style.width = (loaded / total * 100) + '%';
+};
+
+function addRandomPlaceHoldItImage(){
+  var r = Math.round(Math.random() * 4000);
+  new THREE.ImageLoader(manager).load('http://placehold.it/' + r + 'x' + r);
+}
+
+for(var i = 0; i < 10; i++) addRandomPlaceHoldItImage();
+
+
+
+//================================================================================================
+
+div {
+  width: 200px;
+  height: 20px;
+  background: #000;
+  border: 2px solid #000;
+}
+div > div {
+  width: 200px;
+  height: 20px;
+  background: red;
+  border: none;
+}
