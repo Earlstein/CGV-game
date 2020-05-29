@@ -1,11 +1,14 @@
 
 var scene, camera, renderer, mesh, clock;
 
+var meshFloor, outer_grid ;
 
-var meshFloor, ambientLight, light;
+var ambientLight, light;
 
 
 var crate, crateTexture, crateNormalMap, crateBumpMap;
+
+var skybox ;
 
 var keyboard = {};
 
@@ -56,7 +59,10 @@ var bullets = [];
 *
 */
 function addTexture(imageURL, material){
-	//This function we gon' use for adding texture to any object 
+
+	//This function we gon' use for adding texture to any object
+	//Asynchronously loading pictures/textures 
+	
 	function callback(){
 		if (material){
 			material.map = texture;
@@ -74,6 +80,53 @@ function addTexture(imageURL, material){
 *
 *
 */
+
+/* Let's try to avoid spaghetti code but have more functions(!!!!!!!IMPORTANT)
+ * Outermost Walls
+ * The Ground as well
+*/
+
+function fixedGround(){
+
+	//Heiracachial Modelling
+	//The round and the fpour outer walls are the children of outer_grid
+	//Somebody please find better pictures/textures to use for outer walls, THEY SUCK :(....big time
+
+	outer_grid = new THREE.Object3D();
+
+	meshFloor = new THREE.Mesh(
+		new THREE.PlaneGeometry(300,300, 10,10),
+		new THREE.MeshPhongMaterial({color:0xffffff, wireframe:USE_WIREFRAME})
+	);
+
+	meshFloor.rotation.x -= Math.PI / 2;
+	meshFloor.receiveShadow = true;
+	console.log ("Mesh Floor Position " + meshFloor.position.x + " " + meshFloor.position.y + " " + meshFloor.position.z) ;
+	outer_grid.add(meshFloor);
+
+	var wall1 = new THREE.Mesh(new THREE.BoxGeometry(3, 20, 300),new THREE.MeshBasicMaterial({map:addTexture("textures/6.jpg")}));
+	wall1.rotation.y = Math.PI;
+	wall1.position.x = 150;
+	outer_grid.add(wall1);
+
+	var wall1 = new THREE.Mesh(new THREE.BoxGeometry(3, 20, 300),new THREE.MeshBasicMaterial({map:addTexture("textures/6.jpg")}));
+	wall1.rotation.y = Math.PI;
+	wall1.position.x = -150;
+	outer_grid.add(wall1);
+
+	var wall1 = new THREE.Mesh(new THREE.BoxGeometry(3, 20, 300),new THREE.MeshBasicMaterial({map:addTexture("textures/6.jpg")}));
+	wall1.rotation.y = Math.PI/2;
+	wall1.position.z = 150;
+	outer_grid.add(wall1);
+
+	var wall1 = new THREE.Mesh(new THREE.BoxGeometry(3, 20, 300),new THREE.MeshBasicMaterial({map:addTexture("textures/6.jpg")}));
+	wall1.rotation.y = Math.PI/2;
+	wall1.position.z = -150;
+	outer_grid.add(wall1);
+
+	scene.add(outer_grid) ;
+
+}
 
 function makeWorld(){
 	//Making a scene
@@ -101,18 +154,11 @@ function makeWorld(){
 		onResourcesLoaded();
 	};
 	
-	meshFloor = new THREE.Mesh(
-		new THREE.PlaneGeometry(100,100, 10,10),
-		new THREE.MeshPhongMaterial({color:0xffffff, wireframe:USE_WIREFRAME})
-	);
-	meshFloor.rotation.x -= Math.PI / 2;
-	meshFloor.receiveShadow = true;
-	console.log ("Mesh Floor Position " + meshFloor.position.x + " " + meshFloor.position.y + " " + meshFloor.position.z) ;
-	scene.add(meshFloor);
-	
-	
+	meshFloor = fixedGround() ;
 
 	// ---------------------Lights-------------------------------------- 
+
+	// Mahlatse added more Lights ---> He once said 'Let there Mahlatse, to bring light :) :)'
 	ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
 	scene.add(ambientLight);
 	
@@ -121,9 +167,29 @@ function makeWorld(){
 	light.castShadow = true;
 	light.shadow.camera.near = 0.1;
 	light.shadow.camera.far = 25;
+	scene.add(light); 
+	
+	ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+	scene.add(ambientLight);
+	
+	light = new THREE.PointLight(0xffffff, 0.8, 18);
+	light.position.set(40,6,-3);
+	light.castShadow = true;
+	light.shadow.camera.near = 0.1;
+	light.shadow.camera.far = 25;
 	scene.add(light);
+
+	ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+	scene.add(ambientLight);
 	
-	
+	light = new THREE.PointLight(0xffffff, 0.8, 18);
+	light.position.set(25,50,-3);
+	light.castShadow = true;
+	light.shadow.camera.near = 0.1;
+	light.shadow.camera.far = 25;
+	scene.add(light);
+
+
 	var textureLoader = new THREE.TextureLoader(loadingManager);
 
 	crateTexture = addTexture("textures/crate0/crate0_diffuse.jpg") 
@@ -145,40 +211,72 @@ function makeWorld(){
 	crate.castShadow = true;
 
 	//Outer walls:
-	var wall = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:textureLoader.load("textures/crate0/bricksx64.png")}));
+	var wall = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/blocks1.jpg")}));
 	wall.position.y = 3;
 	wall.position.x=-10;
 	scene.add(wall);
 
-	var wall0 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/crate0/bricksx64.png")}));
+	var wall0 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/blocks1.jpg")}));
 	wall0.position.x = 10;
 	scene.add(wall0);
 
-	var wall1 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/crate0/bricksx64.png")}));
+	var wall1 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/blocks1.jpg")}));
 	wall1.rotation.y = Math.PI/2;
 	wall1.position.x = 10;
 	scene.add(wall1);
 
 
-	var wall2 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/crate0/bricksx64.png")}));
+	var wall2 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/blocks1.jpg")}));
 	wall2.rotation.y = Math.PI/2;
 	wall2.position.x = -20;
 	scene.add(wall2);
 
 
-	var wall3 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/crate0/bricksx64.png")}));
+	var wall3 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/blocks1.jpg")}));
 	wall3.rotation.y = Math.PI/2;
 	wall3.position.z = -10;
 	scene.add(wall3);
 
-	var wall4 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/crate0/bricksx64.png")}));
+	var wall4 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/blocks1.jpg")}));
 	wall4.rotation.y = Math.PI/2;
 	wall4.position.z = 10;
 	wall4.position.x = -7;
 	scene.add(wall4);
 
-	//----------------------------------------------------------------------------------------------------------
+	//**************************************
+	//Mahlatse : "I was trying to make walls can somebody draws better please"
 
+	///Please after drawing walls, try to take em to the fixed_ground function such that we can Heirachical Model since it's a need
+	var wall4 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/blocks1.jpg")}));
+	wall4.rotation.y = Math.PI/2;
+	wall4.position.z = 10;
+	wall4.position.x = 22;
+	scene.add(wall4);
+
+	var wall4 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/blocks1.jpg")}));
+	wall4.rotation.y = Math.PI/2;
+	//wall4.position.z = 10;
+	wall4.position.x = 23;
+	scene.add(wall4);
+
+	var wall4 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/blocks1.jpg")}));
+	wall4.rotation.y = Math.PI/2;
+	wall4.position.z = 1;
+	wall4.position.x = 35;
+	scene.add(wall4);
+
+	var wall4 = new THREE.Mesh(new THREE.BoxGeometry(1, 20, 20),new THREE.MeshBasicMaterial({map:addTexture("textures/blocks1.jpg")}));
+	wall4.rotation.y = Math.PI/2;
+	wall4.position.x = 30;
+	scene.add(wall4);
+
+	//Tryin to make walls (up)
+	//*****************************
+
+
+
+	//------------------------------------------------------------------------------------------------------------------------
+	//skybox
 	let materialArray = [];
             materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_ft.png' ), shading: THREE.FlatShading} ));
             materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_bk.png' ), shading: THREE.FlatShading}));
@@ -191,7 +289,7 @@ function makeWorld(){
                 materialArray[i].side = THREE.BackSide;
 
             var skyGeometry = new THREE.CubeGeometry( 600, 600, 600);
-            let skybox = new THREE.Mesh( skyGeometry, materialArray );
+            skybox = new THREE.Mesh( skyGeometry, materialArray );
             skybox.rotation.x = -Math.PI / 2 ;
             scene.add( skybox );
 }
@@ -289,6 +387,8 @@ function animate(){
 		}
 
 	requestAnimationFrame(animate);
+
+
 	
 	var time = Date.now() * 0.0005;
 	var delta = clock.getDelta();
@@ -382,6 +482,10 @@ function animate(){
 		camera.rotation.z
 	);
 	
+	//We have our skybox rotating
+	skybox.rotation.x += 0.0002 ;
+	skybox.rotation.y += 0.0001 ;
+
 	renderer.render(scene, camera);
 }
 

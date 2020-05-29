@@ -11,10 +11,23 @@
 	<script>
 		var scene, camera, renderer ; //Basics
 
-		var starGeo, star, stars ;
+		var starGeo, star, stars, skybox ;
 
 		function render(){
 			renderer.render(scene, camera) ;
+		}
+
+		function addTexture(imageURL, material){
+		//This function we gon' use for adding texture to any object 
+		function callback(){
+			if (material){
+				material.map = texture;
+				material.needsUpdate = false ;
+			}
+		}
+		var texture = new THREE.ImageUtils.loadTexture(imageURL, undefined, callback);
+
+		return texture ;
 		}
 
 		function world(){
@@ -52,6 +65,24 @@
 			stars = new THREE.Points(starGeo, starMaterial);
 			scene.add(stars ) ;
 
+
+		let materialArray = [];
+        materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_ft.png' ), shading: THREE.FlatShading} ));
+        materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_bk.png' ), shading: THREE.FlatShading}));
+        materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_up.png' ), shading: THREE.FlatShading}));
+        materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_dn.png' ), shading: THREE.FlatShading}));
+        materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_rt.png' ), shading: THREE.FlatShading}));
+        materialArray.push(new THREE.MeshBasicMaterial( { map: addTexture( 'textures/night/corona_lf.png' ), shading: THREE.FlatShading}));
+
+            for (let i = 0; i < 6; i++)
+                materialArray[i].side = THREE.BackSide;
+
+            var skyGeometry = new THREE.CubeGeometry( 600, 600, 600);
+            skybox = new THREE.Mesh( skyGeometry, materialArray );
+            skybox.rotation.x = -Math.PI / 2 ;
+            scene.add( skybox );
+
+
 			animate();
 		}
 
@@ -72,6 +103,9 @@
 			starGeo.verticesNeedUpdate = true ;
 			stars.rotation.y += 0.002 ;
 			
+			skybox.rotation.x += 0.002 ;
+			skybox.rotation.z += 0.002 ;
+
 			render();
 		}
 		
@@ -87,15 +121,18 @@
 		init() ;
 	</script>
 
-	 <div class = "main">
 	 	<div class="title">
 	 		<p>Monsters Exist,<br/> Superheroes Exist,<br/> Inside Us<br/></p>
 	 	</div>
-	 	<div>
+	 	
+	 	<div class= "options">
 	 		<ul>
-			<li><a href="stage_one.html">PLAY</a></li>
-		</ul>	
-	 	</div>
-	</div>
+		 		<li><a href="stage_one.html">Start Game</a></li>
+				<li><a href="#">High Score</a></li>
+				<li><a href="#">Tutorial</a></li>
+				<li><a href="#">About</a></li>
+		 	</ul>
+		</div>
+
 </body>
 </html>
